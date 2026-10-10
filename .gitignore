@@ -1,0 +1,19 @@
+node_modules/
+out/
+release/
+vendor/
+dist/
+*.log
+.DS_Store
+
+# Build artefacts
+*.tsbuildinfo
+
+# Local agent tooling, not part of the app
+.agents/
+skills-lock.json
+
+# Local machine config, which is where the API keys live
+config.json
+.env
+.env.*

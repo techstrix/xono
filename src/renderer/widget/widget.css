@@ -1,0 +1,437 @@
+:root {
+  --bg: rgba(20, 22, 27, 0.9);
+  --bg-solid: #14161b;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --fg: #e9ecf1;
+  --fg-dim: #98a1b3;
+  --fg-faint: #6b7488;
+  --accent: #5b8cff;
+  --violet: #8b5cf6;
+  --live: #ff5f56;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+
+  --pill-h: 44px;
+  /* Set from WIDGET_SHADOW_ROOM in the renderer; see the note in shared/types.ts. */
+  --shadow-room: 14px;
+  --radius: 22px;
+  /* The border beam's light. Kept as a token so it follows the theme. */
+  --beam-color: var(--accent);
+
+  /* Slight overshoot then settle: reads as "springing open" rather than a fade. */
+  --spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --settle: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  /* The window is click-through from the main process; this keeps local hit-testing
+     honest too, so only genuinely interactive children respond to the pointer. */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --------------------------------------------------------------- stage */
+
+/**
+ * Bottom-anchored so the pill's lower edge keeps a constant distance from the screen
+ * border no matter how tall it grows. Everything expands upward from here. The window
+ * spans the work area, so this padding is what holds the pill off the screen edge.
+ */
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 10px var(--shadow-room);
+  gap: 6px;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- pill */
+
+.pill {
+  /*
+   * The beam needs a positioned ancestor to fill, and it inherits this radius so it
+   * traces the pill's contour rather than a circle that only happens to fit.
+   *
+   * Deliberately no `overflow: hidden`: that would crop the halo at the border and the
+   * glow would stop glowing. The beam's own border-box mask confines it to the ring
+   * instead, which is what keeps it on the edge while letting light spill outward.
+   */
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--pill-h);
+  max-width: 100%;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.26);
+  pointer-events: none;
+
+  /* The resting pill is a compact capsule; expanding morphs it into a wide bar. */
+  transform-origin: bottom center;
+  animation: settle 340ms var(--settle);
+}
+
+.stage--expanded .pill {
+  animation: expand 420ms var(--spring);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes expand {
+  0% {
+    opacity: 0.4;
+    transform: translateY(12px) scaleX(0.35);
+  }
+  55% {
+    transform: translateY(0) scaleX(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleX(1);
+  }
+}
+
+
+}
+
+/* ----------------------------------------------------------------- idle */
+
+/**
+ * The resting state. Present for the whole life of the app so the hotkey is
+ * discoverable, so it leans on being small, quiet and legible rather than invisible.
+ */
+.pill--idle {
+  padding: 0 12px 0 11px;
+  gap: 7px;
+  color: var(--fg-dim);
+  /* A slow breath so it reads as alive without demanding attention. */
+  animation: settle 340ms var(--settle), breathe 5.5s ease-in-out 400ms infinite;
+}
+
+.pill--idle .icon {
+  opacity: 0.62;
+  transition: opacity 220ms var(--settle);
+}
+
+.idle__hint {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--fg-faint);
+  opacity: 0.75;
+  transition: color 220ms var(--settle), opacity 220ms var(--settle);
+}
+
+.pill--peeked .icon,
+.pill--peeked .idle__hint {
+  opacity: 1;
+  color: var(--fg-dim);
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* -------------------------------------------------------------- listening */
+
+.pill--live {
+  width: min(440px, 100%);
+  border-color: rgba(255, 95, 86, 0.28);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--fg-faint);
+}
+
+.dot--live {
+  background: var(--live);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+/* ------------------------------------------------------------------ wave */
+
+.wave {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  height: 26px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wave__bar {
+  flex: 1 1 0;
+  min-width: 2px;
+  max-width: 4px;
+  height: 8%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--violet));
+  /* Interpolate between the ~30ms analysis frames so the motion reads as continuous. */
+  transition: height 70ms linear;
+}
+
+.timer {
+  font-size: 11.5px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  min-width: 34px;
+}
+
+/* --------------------------------------------------------------- actions */
+
+.pill__action,
+.btn {
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 5px 11px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 140ms var(--settle);
+}
+
+.pill__action:hover,
+.btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.btn--primary:hover {
+  background: #4a7cf0;
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--fg-dim);
+}
+
+.stage--interactive .pill--review,
+.stage--interactive .pill--error {
+  pointer-events: auto;
+}
+
+.stage--interactive {
+  pointer-events: none;
+}
+
+.stage--interactive .pill--review .btn,
+.stage--interactive .pill--error .btn {
+  pointer-events: auto;
+}
+
+/* ----------------------------------------------------------------- work */
+
+.pill--work {
+  width: min(360px, 100%);
+}
+
+.work {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.work__bar {
+  height: 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.work__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--violet));
+  transition: width 220ms var(--settle);
+}
+
+.work__fill--indeterminate {
+  width: 36%;
+  animation: slide 1.2s ease-in-out infinite;
+}
+
+@keyframes slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.work__label {
+  font-size: 12px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----------------------------------------------------------------- done */
+
+.pill--done {
+  max-width: min(440px, 100%);
+  border-color: rgba(74, 222, 128, 0.3);
+  color: var(--ok);
+  animation: expand 420ms var(--spring);
+}
+
+.preview {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--fg);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.icon {
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------- review */
+
+.pill--review {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+  height: auto;
+  padding: 12px 13px;
+  width: min(460px, 100%);
+}
+
+.review__text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  max-height: 84px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 9px;
+  color: var(--fg);
+}
+
+.review__actions {
+  display: flex;
+  gap: 7px;
+}
+
+/* ----------------------------------------------------------------- error */
+
+.pill--error {
+  max-width: min(460px, 100%);
+  border-color: rgba(248, 113, 113, 0.36);
+}
+
+.error__text {
+  font-size: 12.5px;
+  color: #ffd4d4;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- notice */
+
+.notice {
+  max-width: min(460px, 100%);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #fde0a6;
+  background: rgba(20, 22, 27, 0.82);
+  border: 1px solid rgba(251, 191, 36, 0.26);
+  backdrop-filter: blur(14px);
+  border-radius: 10px;
+  padding: 6px 10px;
+  pointer-events: none;
+  animation: settle 300ms var(--settle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .stage--expanded .pill,
+  .pill--idle {
+    animation: none;
+  }
+  .dot--live,
+  .work__fill--indeterminate,
+  .pill--idle,
+  .border-beam__blob,
+  .border-beam__halo {
+    animation: none;
+  }
+  .wave__bar {
+    transition: none;
+  }
+}

@@ -1,0 +1,111 @@
+/*
+ * Border beam — a highlight that travels once around a container's border.
+ *
+ * The technique, deliberately, does not animate `border-color`. That repaints the whole
+ * element every frame and still cannot produce a travelling highlight, only a tint.
+ * Instead a small glowing blob is moved *along the border path* with the CSS Motion Path
+ * API, and the container's own border-box mask clips it to a thin ring so it reads as
+ * light running around the edge.
+ */
+
+/* The beam's travel: one full lap of the perimeter. */
+@keyframes border-beam {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+/*
+ * The ring that confines the light.
+ *
+ * A transparent border is what makes the ring exist at all: it puts the border box 1px
+ * (or `n`px) outside the padding box, and intersecting the two mask layers keeps only
+ * that difference. Without a real border the two boxes coincide and the mask lets
+ * everything through — the light then escapes as an unconstrained blob instead of
+ * hugging the contour.
+ *
+ * This is why there is no `overflow: hidden` on the container: cropping there would
+ * flatten the glow at the edge. The mask is what confines the beam, and it confines it
+ * precisely to the shape the container already has.
+ */
+.border-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  pointer-events: none;
+
+  -webkit-mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+  -webkit-mask-clip: padding-box, border-box;
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+  mask-clip: padding-box, border-box;
+  mask-composite: intersect;
+
+  opacity: 0;
+  transition: opacity 320ms var(--settle);
+}
+
+/*
+ * The glow is the same construction on a wider ring, then blurred.
+ *
+ * Masking it matters as much as masking the beam: an unmasked glow is a blob centred on
+ * the path, which on a wide, flat pill means most of it hangs off the side as a detached
+ * orb. Confining it to a band around the border and softening that band is what makes
+ * it read as light coming off the edge.
+ */
+.border-beam--halo {
+  border-width: 6px;
+  filter: blur(4px) saturate(150%);
+  /* Added to the backdrop rather than mixed into it: normal alpha washes a glow out to
+     grey, which is the difference between light and fog. */
+  mix-blend-mode: plus-lighter;
+}
+
+/* The blob that does the travelling, in both layers. */
+.border-beam__blob {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--beam-size, 130px);
+  height: var(--beam-size, 130px);
+  /*
+   * Follow the container's own rounded border. `auto` takes the container's size, so the
+   * path follows the pill as it expands and collapses rather than being drawn once for a
+   * single fixed shape.
+   */
+  offset-path: rect(0 auto auto 0 round var(--radius));
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+  /*
+   * The animation is infinite and always running, so promote the blob explicitly: it
+   * would otherwise be re-rasterised as it travels. `offset-distance` is a compositor
+   * property, so this never triggers layout.
+   */
+  will-change: offset-distance;
+  animation: border-beam var(--beam-duration, 4s) linear infinite;
+  animation-delay: var(--beam-delay, 0s);
+}
+
+/* The beam: small, hot, and sharply defined at the leading edge. */
+.border-beam__blob {
+  background: radial-gradient(
+    closest-side,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.85) 16%,
+    var(--beam-color, var(--accent, #5b8cff)) 42%,
+    transparent 100%
+  );
+}
+
+/* The glow: the same path, softer and dimmer, so it spreads without competing. */
+.border-beam__blob--halo {
+  background: radial-gradient(closest-side, var(--beam-color, var(--accent, #5b8cff)) 0%, transparent 60%);
+  /* Kept well under the beam: the glow should read as spill from the border, not as a
+     second light source competing with it. */
+  opacity: 0.5;
+}
+
+.stage[data-state='listening'] .border-beam {
+  opacity: 1;
+}

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Xono
+GenericName=Voice dictation
+Comment=Speak, and the cleaned text lands wherever you were typing
+Exec=xono --ozone-platform=x11 %U
+Icon=xono
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=dictation;speech;voice;transcribe;whisper;
+StartupNotify=false
+StartupWMClass=dev.xono.app
+X-KDE-autostart-phase=1
+X-KDE-autostart-after=panel

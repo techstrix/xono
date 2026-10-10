@@ -1,0 +1,93 @@
+{
+  "name": "xono",
+  "version": "0.1.0",
+  "description": "Voice-first prompt injection: dictate, clean, and paste into whatever input field has focus",
+  "main": "./out/main/index.js",
+  "author": "xono",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "electron-vite dev -- --ozone-platform=x11",
+    "start": "electron-vite preview -- --ozone-platform=x11",
+    "build": "npm run typecheck && electron-vite build",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "doctor": "bash scripts/check-deps.sh",
+    "setup:engine": "bash scripts/setup-engine.sh",
+    "package": "npm run build && electron-builder --linux AppImage",
+    "test:live": "XONO_LIVE=1 vitest run tests/live",
+    "test:engine": "XONO_ENGINE=1 vitest run tests/live/engine.live.test.ts",
+    "test:inject": "XONO_INJECT=1 vitest run tests/live/inject.live.test.ts",
+    "test:openrouter": "XONO_OPENROUTER=1 vitest run tests/live/openrouter.live.test.ts",
+    "test:nvidia": "XONO_NVIDIA=1 vitest run tests/live/nvidia.live.test.ts",
+    "launch": "bash scripts/launch.sh",
+    "postinstall": "node -e \"try{require('electron/install')}catch(e){}\" || true; npm run setup:desktop-entry --if-present 2>/dev/null || true",
+    "setup:desktop-entry": "bash scripts/install-desktop-entry.sh",
+    "check:hotkey": "bash scripts/check-hotkey.sh",
+    "check:toggle": "bash scripts/check-toggle-fallback.sh"
+  },
+  "dependencies": {
+    "electron-log": "^5.2.4",
+    "zod": "^3.24.1"
+  },
+  "optionalDependencies": {
+    "onnxruntime-node": "^1.20.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^44.7.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "build": {
+    "appId": "dev.xono.app",
+    "productName": "Xono",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/whisper.cpp/build/bin",
+        "to": "whisper",
+        "filter": [
+          "**/whisper-cli"
+        ]
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility",
+      "icon": "resources/icon.png",
+      "executableArgs": [
+        "--ozone-platform=x11"
+      ]
+    },
+    "desktopName": "dev.xono.app.desktop"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.30.0": true,
+    "esbuild@0.21.5": true,
+    "electron@44.7.0": true
+  }
+}
