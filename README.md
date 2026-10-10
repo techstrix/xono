@@ -31,9 +31,11 @@ Requires Node 22+, CMake, a C++ compiler, and audio-capture tools
 npm install
 
 # Build whisper.cpp and download the default GGML model.
-# Add --portable (or XONO_PORTABLE=1) for a binary that runs on any x86-64
-# distro — required before `npm run package`.
 npm run setup:engine
+
+# For a binary that runs on any x86-64 distro — needed before `npm run package`.
+# The `--` is required: without it npm swallows the flag instead of passing it on.
+npm run setup:engine -- --portable
 
 # Install the desktop entry. Required for the global hotkey to work on Wayland —
 # the portal identifies the app by its desktop identity, and refuses the binding
@@ -53,8 +55,9 @@ Wayland and the pill silently loses both its position and its always-on-top beha
 
 ### Per-distro packages
 
-`npm run doctor` detects the package manager and prints the right line; this table
-is the same mapping in one place:
+`npm run doctor` detects the package manager and prints the right line. These four
+cover most desktops; it also handles Alpine, Void, Gentoo and Nix, which are left out
+of the table rather than padded:
 
 | Need | Arch | Debian / Ubuntu | Fedora | openSUSE |
 |---|---|---|---|---|
