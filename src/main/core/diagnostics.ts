@@ -3,6 +3,7 @@ import { accessSync, constants, existsSync } from 'node:fs'
 import type { DiagnosticsReport, PreflightCheck, PreflightReport } from '@shared/types'
 import type { XonoConfig } from '@shared/schema'
 import { commandExists } from './exec'
+import { installFixForCurrent } from './linux/distro'
 import { findWhisperCli } from './stt/whisperCpp'
 import type { ModelManager } from './stt'
 import type { ProviderRegistry } from './llm'
@@ -22,13 +23,17 @@ export async function runPreflight(
   const checks: PreflightCheck[] = []
 
   const hasParec = await commandExists('parec')
+  const hasPwRecord = hasParec ? true : await commandExists('pw-record')
+  const hasCapture = hasParec || hasPwRecord
   checks.push({
     id: 'parec',
-    label: 'Audio capture (parec)',
-    ok: hasParec,
+    label: 'Audio capture (parec / pw-record)',
+    ok: hasCapture,
     severity: 'error',
-    detail: hasParec ? 'found on PATH' : 'parec is not installed, so there is no microphone access',
-    fixes: hasParec ? [] : ['sudo pacman -S pipewire-utils']
+    detail: hasCapture
+      ? `found on PATH (${hasParec ? 'parec' : 'pw-record'})`
+      : 'neither parec nor pw-record is installed, so there is no microphone access',
+    fixes: hasCapture ? [] : [installFixForCurrent('audio-capture')]
   })
 
   const wireplumber = await commandExists('wpctl')

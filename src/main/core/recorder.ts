@@ -3,8 +3,11 @@ import type { Readable } from 'node:stream'
 import { once } from 'node:events'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { CHANNELS, SAMPLE_RATE, type WaveFrame } from '@shared/types'
+import type { WaveFrame } from '@shared/types'
 import { loggerScope } from './logger'
+import { commandExists } from './exec'
+import { buildCaptureArgs, pickCaptureTool, type CaptureTool } from './linux/audio'
+import { installFixForCurrent } from './linux/distro'
 
 const log = loggerScope('recorder')
 const execFileAsync = promisify(execFile)
@@ -90,12 +93,13 @@ export interface RecorderOptions {
 }
 
 /**
- * Captures 16 kHz mono s16le PCM by shelling out to PipeWire's `parec`.
+ * Captures 16 kHz mono s16le PCM by shelling out to `parec`, falling back to
+ * `pw-record` then `arecord` on distros without the PulseAudio-compat package.
  *
  * Why a subprocess rather than an npm native module: `parec` ships with
- * pipewire-utils (already present on any modern desktop), negotiates the format for
- * us, and — unlike portaudio/GStreamer bindings — carries no ABI that breaks when
- * Electron updates. The trade-off is one process per utterance.
+ * pipewire-utils on Arch (pulseaudio-utils + pipewire-pulse elsewhere), negotiates
+ * the format for us, and — unlike portaudio/GStreamer bindings — carries no ABI
+ * that breaks when Electron updates. The trade-off is one process per utterance.
  */
 type Capture = ChildProcessByStdio<null, Readable, Readable>
 
@@ -121,21 +125,24 @@ export class AudioRecorder {
     if (this.child) throw new Error('recorder already running')
     this.reset()
 
-    const args = [
-      `--format=s16le`,
-      `--rate=${SAMPLE_RATE}`,
-      `--channels=${CHANNELS}`,
-      `--latency-msec=20`
-    ]
-    if (opts.deviceId) args.push(`--device=${opts.deviceId}`)
+    // Cross-distro: prefer parec (tuned flags, identical argv to before), fall back
+    // to pw-record (PipeWire-native) then arecord (ALSA) when the compat package
+    // is missing — common on fresh Debian/Fedora installs.
+    const tool: CaptureTool | null = await pickCaptureTool((t) => commandExists(t))
+    if (!tool) {
+      throw new Error(
+        `Could not start audio capture: no capture tool found (tried parec, pw-record, arecord). ${installFixForCurrent('audio-capture')}.`
+      )
+    }
+    const args = buildCaptureArgs(tool, opts.deviceId)
 
-    log.debug('spawning parec', args.join(' '))
+    log.debug(`spawning ${tool}`, args.join(' '))
     let child: Capture
     try {
-      child = spawn('parec', args, { stdio: ['ignore', 'pipe', 'pipe'] })
+      child = spawn(tool, args, { stdio: ['ignore', 'pipe', 'pipe'] })
     } catch (err) {
       throw new Error(
-        `Could not start audio capture: ${(err as Error).message}. Install pipewire-utils with \`sudo pacman -S pipewire-utils\`.`
+        `Could not start audio capture: ${(err as Error).message}. Install pipewire-utils with \`${installFixForCurrent('audio-capture')}\`.`
       )
     }
 
@@ -145,16 +152,16 @@ export class AudioRecorder {
     let spawnFailure: Error | null = null
     child.on('error', (err) => {
       spawnFailure = new Error(
-        `Audio capture failed to start: ${err.message}. Install pipewire-utils with \`sudo pacman -S pipewire-utils\`.`
+        `Audio capture failed to start: ${err.message}. Install pipewire-utils with \`${installFixForCurrent('audio-capture')}\`.`
       )
-      log.error('parec error', err)
+      log.error(`${tool} error`, err)
     })
 
     child.stdout.on('data', (data: Buffer) => this.ingest(data, opts))
 
     child.stderr.on('data', (data: Buffer) => {
       const text = data.toString().trim()
-      if (text) log.warn('parec:', text)
+      if (text) log.warn(`${tool}:`, text)
     })
 
     child.on('close', (code, signal) => {
@@ -269,13 +276,13 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** Enumerate PipeWire input devices via `pactl`, best-effort. */
+/** Enumerate input devices via `pactl`, falling back to `arecord -l`, best-effort. */
 export async function listInputDevices(): Promise<AudioDevice[]> {
   try {
     const { stdout } = await execFileAsync('pactl', ['list', 'sources', 'short'], {
       timeout: 3000
     })
-    return stdout
+    const devices = stdout
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean)
@@ -284,8 +291,24 @@ export async function listInputDevices(): Promise<AudioDevice[]> {
         return { id: id ?? '', name: rest.trim(), isDefault: rest.includes('default') }
       })
       .filter((d) => d.id !== '' && !d.name.includes('monitor'))
+    if (devices.length > 0) return devices
   } catch (err) {
-    log.warn('could not enumerate audio devices', err)
+    log.warn('could not enumerate audio devices via pactl', err)
+  }
+  // ALSA fallback for minimal installs without PulseAudio/PipeWire compat tools.
+  try {
+    const { stdout } = await execFileAsync('arecord', ['-l'], { timeout: 3000 })
+    const devices: AudioDevice[] = []
+    for (const line of stdout.split('\n')) {
+      const m = line.match(/^card\s+(\d+):\s*([^,]+),.*device\s+(\d+):\s*(.+)$/i)
+      if (m) {
+        const id = `hw:${m[1]},${m[3]}`
+        devices.push({ id, name: `${m[2]?.trim()} — ${m[4]?.trim()}`, isDefault: devices.length === 0 })
+      }
+    }
+    return devices
+  } catch (err) {
+    log.warn('could not enumerate audio devices via arecord', err)
     return []
   }
 }

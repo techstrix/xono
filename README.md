@@ -24,12 +24,15 @@ so. If injection degrades, the text goes to your clipboard and you press Ctrl+V.
 
 ## Setup
 
-Requires Node 22+, CMake, a C++ compiler, and (Linux) `pipewire-utils`.
+Requires Node 22+, CMake, a C++ compiler, and audio-capture tools
+(`parec` or `pw-record` — `npm run doctor` prints the exact install line).
 
 ```bash
 npm install
 
 # Build whisper.cpp and download the default GGML model.
+# Add --portable (or XONO_PORTABLE=1) for a binary that runs on any x86-64
+# distro — required before `npm run package`.
 npm run setup:engine
 
 # Install the desktop entry. Required for the global hotkey to work on Wayland —
@@ -48,7 +51,39 @@ npm run launch
 widget behaves identically in development. Without it, dev mode falls back to native
 Wayland and the pill silently loses both its position and its always-on-top behaviour.
 
-Two things need `sudo` and are reported by `npm run doctor`:
+### Per-distro packages
+
+`npm run doctor` detects the package manager and prints the right line; this table
+is the same mapping in one place:
+
+| Need | Arch | Debian / Ubuntu | Fedora | openSUSE |
+|---|---|---|---|---|
+| Audio capture (`parec`) | `sudo pacman -S pipewire-utils` | `sudo apt install pulseaudio-utils pipewire-pulse wireplumber` | `sudo dnf install pipewire-utils pulseaudio-utils wireplumber` | `sudo zypper install pipewire-pulseaudio pulseaudio-utils wireplumber` |
+| Ctrl+V on Wayland | `sudo pacman -S ydotool` | `sudo apt install ydotool` | `sudo dnf install ydotool` | `sudo zypper install ydotool` |
+| Ctrl+V on X11 | `sudo pacman -S xdotool` | `sudo apt install xdotool` | `sudo dnf install xdotool` | `sudo zypper install xdotool` |
+| Build tools | `sudo pacman -S base-devel cmake` | `sudo apt install build-essential cmake` | `sudo dnf install gcc-c++ make cmake` | `sudo zypper install gcc-c++ make cmake` |
+
+At runtime the recorder prefers `parec`, then falls back to `pw-record`
+(PipeWire-native, present even without the compat package) and `arecord` (ALSA).
+Device listing falls back from `pactl` to `arecord -l` the same way.
+
+### AppImage (cross-distro install)
+
+```bash
+npm run package:portable   # portable whisper build + AppImage in release/
+```
+
+The AppImage bundles the Electron app and `whisper-cli`; three things stay on the
+host by necessity and degrade gracefully when absent:
+
+- `/dev/uinput` + `input` group membership (`sudo modprobe uinput`,
+  `sudo usermod -aG input $USER`) — without it injection degrades to
+  clipboard-only rather than failing the dictation.
+- A running PipeWire / PulseAudio server with a microphone.
+- `ydotool`/`xdotool` for automatic Ctrl+V (or `wtype` on Wayland compositors
+  with virtual-keyboard support, which needs no daemon).
+
+Two things need `sudo` and are reported by `npm run doctor` (Arch shown):
 
 ```bash
 sudo pacman -S ydotool        # sends the Ctrl+V key chord on Wayland

@@ -4,6 +4,9 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/lib/distro.sh"
+XONO_PM="$(xono_detect_pm)"
 FAIL=0
 WARN=0
 
@@ -13,13 +16,16 @@ bad()   { printf '  \033[1;31m✗\033[0m %s\n' "$1"; FAIL=$((FAIL + 1)); }
 head_() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 printf '\033[1;6mXono dependency check\033[0m\n'
+printf '  distro package manager: %s\n' "$XONO_PM"
 
 head_ "Audio capture"
 if command -v parec >/dev/null; then
   ok "parec found ($(command -v parec))"
+elif command -v pw-record >/dev/null; then
+  ok "pw-record found ($(command -v pw-record)) — used since parec is absent"
 else
   bad "parec missing — no microphone access"
-  printf '      fix: sudo pacman -S pipewire-utils\n'
+  printf '      fix: %s\n' "$(xono_install_fix audio-capture)"
 fi
 
 if command -v wpctl >/dev/null; then
@@ -52,7 +58,7 @@ if command -v "$WANT" >/dev/null; then
   ok "$WANT found"
 else
   bad "$WANT missing — this is what sends Ctrl+V on $SESSION"
-  printf '      fix: sudo pacman -S %s\n' "$WANT"
+  printf '      fix: %s\n' "$(xono_install_fix "$WANT")"
 fi
 
 if [ "$WANT" = "ydotool" ]; then

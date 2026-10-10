@@ -5,6 +5,7 @@ import type { InjectResult, PreflightCheck } from '@shared/types'
 import type { InjectionMethod } from '@shared/schema'
 import { loggerScope } from '../logger'
 import { commandExists, runCommand } from '../exec'
+import { currentDistro, installFix } from '../linux/distro'
 import { CHORD_CTRL_V, CHORD_ENTER } from './keycodes'
 import { YdotoolDaemon } from './ydotoold'
 import type { InjectOptions, Injector, TextSource } from './types'
@@ -94,13 +95,15 @@ export class ClipboardPasteInjector implements Injector {
     const binary = this.keySender
 
     const installed = await commandExists(binary)
+    const pm = currentDistro().pm
+    const fixPkg = binary === 'ydotool' ? 'ydotool' : 'xdotool'
     checks.push({
       id: `${binary}-installed`,
       label: `${binary} is installed`,
       ok: installed,
       severity: 'error',
       detail: installed ? 'found on PATH' : `${binary} is not on PATH`,
-      fixes: installed ? [] : [`sudo pacman -S ${binary}`]
+      fixes: installed ? [] : [installFix(fixPkg, pm)]
     })
 
     // ydotool is only a client; without the daemon every invocation exits 2 with
@@ -120,7 +123,8 @@ export class ClipboardPasteInjector implements Injector {
           ? []
           : [
               'For a daemon that survives app restarts, add a systemd user unit:',
-              'sudo systemctl --user enable --now ydotool   (or: systemctl --user start ydotoold)'
+              'sudo systemctl --user enable --now ydotool   (or: systemctl --user start ydotoold)',
+              `Daemon-less alternative on Wayland compositors with virtual-keyboard support: ${installFix('wtype', pm)}`
             ]
       })
     }
