@@ -81,9 +81,11 @@
       "icon": "resources/icon.png",
       "executableArgs": [
         "--ozone-platform=x11"
-      ]
-    },
-    "desktopName": "dev.xono.app.desktop"
+      ],
+      "desktop": {
+        "StartupWMClass": "Xono"
+      }
+    }
   },
   "allowScripts": {
     "onnxruntime-node@1.30.0": true,

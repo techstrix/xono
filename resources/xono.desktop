@@ -9,6 +9,6 @@ Terminal=false
 Categories=Utility;Accessibility;
 Keywords=dictation;speech;voice;transcribe;whisper;
 StartupNotify=false
-StartupWMClass=dev.xono.app
+StartupWMClass=Xono
 X-KDE-autostart-phase=1
 X-KDE-autostart-after=panel

@@ -16,7 +16,7 @@ const argv = process.argv.slice(1)
 // returns true, so the only symptom is a hotkey that never fires. This must be set
 // before the ready event.
 if (process.platform === 'linux') {
-  app.setDesktopName('dev.xono.app.desktop')
+  app.setDesktopName('xono')
 }
 
 /**
