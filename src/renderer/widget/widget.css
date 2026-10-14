@@ -89,9 +89,24 @@ body,
   border: 1px solid var(--border);
   border-radius: var(--radius);
   backdrop-filter: blur(20px) saturate(150%);
-  box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.42),
-    0 2px 6px rgba(0, 0, 0, 0.26);
+  /*
+   * Deliberately no drop shadow.
+   *
+   * The widget window is transparent, so anything the pill casts below itself is
+   * composited against whatever happens to be on screen at the time. Under XWayland
+   * the shadow is drawn by the compositor rather than by the renderer, which means it
+   * lands against the window's own bottom edge instead of fading out: the glow
+   * arrives as a hard black bar sitting a few pixels under the pill.
+   *
+   * Measured on this machine, any shadow at all produced a ~2px black line across the
+   * window's last rows; `box-shadow: none` leaves them untouched. The pill keeps its
+   * edge from `border` and `backdrop-filter`, which are enough to read it as a
+   * distinct surface without the artifact.
+   *
+   * If depth is ever wanted back, raise --shadow-room (WIDGET_SHADOW_ROOM in
+   * shared/types.ts) well past the blur radius rather than re-adding a tight shadow.
+   */
+  box-shadow: none;
   pointer-events: none;
 
   /* The resting pill is a compact capsule; expanding morphs it into a wide bar. */
