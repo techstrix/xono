@@ -1,3 +1,4 @@
+import { acceleratorKeys } from '@shared/accelerator'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { WIDGET_SHADOW_ROOM, type PipelineState, type Progress, type WaveFrame } from '../../shared/types'
 import type { XonoApi } from '../../preload'
@@ -265,7 +266,13 @@ function IdlePill({ accelerator, peeked }: { accelerator: string; peeked: boolea
   return (
     <div className={`pill pill--idle ${peeked ? 'pill--peeked' : ''}`}>
       <Mic />
-      <span className="idle__hint">{prettyAccelerator(accelerator)}</span>
+      <span className="idle__hint keys">
+        {acceleratorKeys(accelerator).map((key, i) => (
+          <kbd key={`${key.label}-${i}`} className={key.modifier ? 'key key--mod' : 'key'}>
+            {key.label}
+          </kbd>
+        ))}
+      </span>
     </div>
   )
 }
@@ -301,35 +308,6 @@ function Tick(): React.JSX.Element {
       />
     </svg>
   )
-}
-
-/** `Super+Quote` reads as jargon; show the symbols instead. */
-export function prettyAccelerator(accelerator: string): string {
-  if (!accelerator) return ''
-  const map: Record<string, string> = {
-    Super: '⌘',
-    Meta: '⌘',
-    Command: '⌘',
-    Control: '⌃',
-    Ctrl: '⌃',
-    Alt: '⌥',
-    Option: '⌥',
-    Shift: '⇧',
-    Space: 'Space',
-    Quote: "'",
-    Backquote: '`',
-    Minus: '-',
-    Equal: '=',
-    BracketLeft: '[',
-    BracketRight: ']'
-  }
-  return accelerator
-    .split('+')
-    .map((part) => {
-      const key = map[part] ?? part
-      return map[part] ? (key === 'Space' ? 'Space' : key) : key.toUpperCase()
-    })
-    .join('')
 }
 
 function formatElapsed(ms: number): string {

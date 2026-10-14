@@ -164,6 +164,49 @@ body,
   color: var(--fg-dim);
 }
 
+/* ------------------------------------------------------------------ keys */
+
+/*
+ * The hotkey, drawn as keycaps.
+ *
+ * Previously the whole accelerator collapsed into one run of text — `⌃Space` — where the
+ * caret glyph is easily misread and the pairing is invisible. Keycaps make it obvious that
+ * these are two keys held together, and a lone letter is ambiguous in a string of them.
+ */
+.keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  /* A keycap reads as a raised key, so it needs a lit top edge and a shaded body. */
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+  text-transform: lowercase;
+}
+
+/* The modifier is context, not the key being memorised, so it sits back. */
+.key--mod {
+  color: var(--fg-dim);
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
 @keyframes breathe {
   0%,
   100% {
