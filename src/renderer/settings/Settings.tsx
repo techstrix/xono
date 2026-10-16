@@ -52,7 +52,7 @@ export function Settings(): React.JSX.Element {
     <div className="settings">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand__mark" aria-hidden="true" />
+          <img src="../../../resources/icon.png" alt="Xono" width="18" height="18" style={{ borderRadius: '3px' }} />
           <span className="brand__name">Xono</span>
           <span className="brand__version">{version}</span>
         </div>

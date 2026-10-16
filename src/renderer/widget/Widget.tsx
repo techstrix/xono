@@ -193,14 +193,6 @@ export function Widget(): React.JSX.Element {
             ))}
           </div>
           <span className="timer">{formatElapsed(view.elapsed)}</span>
-          <button
-            type="button"
-            className="pill__action"
-            aria-label="Stop dictating"
-            onClick={() => void window.xono.pipeline.stop()}
-          >
-            Stop
-          </button>
         </div>
       )}
 
